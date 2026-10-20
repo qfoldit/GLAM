@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qfoldit/GLAM/blob/main/integrations/qfoldit_glam/mission-request.schema.json",
+  "title": "qFoldIT GLAM adapter job request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "task",
+    "mission_id",
+    "mission_version",
+    "dataset",
+    "dataset_revision"
+  ],
+  "properties": {
+    "contract": {
+      "const": "qfoldit.glam-adapter.job-request/0.1"
+    },
+    "task": {
+      "const": "adaptive-property-search"
+    },
+    "mission_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+    },
+    "mission_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "dataset": {
+      "enum": [
+        "demo",
+        "esol",
+        "freesolv",
+        "lipophilicity",
+        "physprop_perturb",
+        "bbbp",
+        "bace",
+        "sider",
+        "toxcast",
+        "tox21"
+      ]
+    },
+    "dataset_revision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Caller-supplied dataset version or immutable identifier; not independently attested by this adapter."
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_init_configs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 5
+        },
+        "n_low_fidelity_seed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "default": 1
+        },
+        "n_top_blend": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2
+        },
+        "n_high_fidelity_seed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "default": 1
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "default": 1234
+        },
+        "split_seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "default": 1234
+        }
+      }
+    }
+  }
+}
