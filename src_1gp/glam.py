@@ -43,7 +43,7 @@ class GLAM():
             for i_task in range(self.args.n_low_fidelity_seed):
                 config['seed'] = self.seeds[i_task]
                 cmd = config2cmd(config)
-                p = subprocess.Popen(cmd, shell=True)
+                p = subprocess.Popen(cmd, shell=False)
                 proc.append(p)
                 time.sleep(5)
             print(config_id, i)
