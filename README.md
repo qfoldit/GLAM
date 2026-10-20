@@ -14,6 +14,7 @@ This repository is the qFoldIT-managed fork of Yuquan Li's GLAM research impleme
 The first integration slice is experimental and currently supports launching GLAM's existing adaptive molecular-property training/model-selection pipeline through a loopback-only, token-gated adapter. It does not yet expose direct per-molecule inference, validated drug-target/drug-drug screening endpoints, or Evidence 1.1 publication.
 
 - [qFoldIT GLAM adapter](integrations/qfoldit_glam/README.md)
+- [qFoldIT GLAM Scientific MCP server](https://github.com/qfoldit/UEFN-QFOLDIT/tree/main/runtime/glam-mcp) — experimental stdio MCP wrapper exposing only the current adapter capabilities.
 - [Job request schema](integrations/qfoldit_glam/mission-request.schema.json)
 - [Job response schema](integrations/qfoldit_glam/job-response.schema.json)
 
