@@ -33,11 +33,14 @@ def auto_summarize_logs(dataset: str, ongoing=False):
 
 
 def config2cmd(config: dict):
-    _ = ' '.join(['--' + k + ' ' + str(v) for k, v in config.items()])
-    cmd = 'python3 run.py {}'.format(_)
-    cmd = cmd.replace('(', '\(').replace(')', '\)')  # for shell run
-    print(cmd)
-    return cmd
+    """Build an argument vector instead of a shell-interpreted command string."""
+    import sys
+
+    command = [sys.executable, 'run.py']
+    for key, value in config.items():
+        command.extend(['--' + str(key), str(value)])
+    print('GLAM worker argv:', command)
+    return command
 
 
 def print_red(s: str):
