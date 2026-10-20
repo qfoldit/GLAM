@@ -7,7 +7,19 @@ Code for "An adaptive graph learning method for automated molecular interactions
 
 Access the paper by this sharedit link: https://rdcu.be/cQP0g
 
-## Abstract
+## qFoldIT fork and integration status
+
+This repository is the qFoldIT-managed fork of Yuquan Li's GLAM research implementation. The scientific method and original publication remain attributed to the original authors; this fork adds a separately scoped integration layer and does not claim ownership of upstream research.
+
+The first integration slice is experimental and currently supports launching GLAM's existing adaptive molecular-property training/model-selection pipeline through a loopback-only, token-gated adapter. It does not yet expose direct per-molecule inference, validated drug-target/drug-drug screening endpoints, or Evidence 1.1 publication.
+
+- [qFoldIT GLAM adapter](integrations/qfoldit_glam/README.md)
+- [Job request schema](integrations/qfoldit_glam/mission-request.schema.json)
+- [Job response schema](integrations/qfoldit_glam/job-response.schema.json)
+
+A successful process exit is not scientific validation. Results must be independently evaluated before they become accepted evidence, attribution, or commercial settlement.
+
+## Original abstract
 
 Improving drug discovery efficiency is a core and long-standing challenge in drug discovery. For this purpose, many graph learning methods have been developed to search potential drug candidates with fast speed and low cost. In fact, the pursuit of high prediction performance on a limited number of datasets has crystallized their architectures and hyperparameters, making them lose advantage in repurposing to new data generated in drug discovery. Here we propose a flexible method that can adapt to any dataset and make accurate predictions. The proposed method employs an adaptive pipeline to learn from a dataset and output a predictor. Without any manual intervention, the method achieves far better prediction performance on all tested datasets than traditional methods, which are based on hand-designed neural architectures and other fixed items. In addition, we found that the proposed method is more robust than traditional methods and can provide meaningful interpretability. Given the above, the proposed method can serve as a reliable method to predict molecular interactions and properties with high adaptability, performance, robustness and interpretability. This work would take a solid step forward to the purpose of aiding researchers to design better drugs with high efficiency.
 
@@ -53,7 +65,7 @@ If you don't have a gpu or want a cpu version, you can try this:
 ## Demo
 If you have successfully completed the above steps, then you can use the following code to run a demo for a property prediction task.
 
-    git clone https://github.com/yvquanli/GLAM.git
+    git clone https://github.com/qfoldit/GLAM.git
     cd ./GLAM/src_1gp
     python3 demo.py
 
@@ -73,7 +85,7 @@ If you want preparing the workplace for full runing of the code, you can try thi
 
     cd ~
     mkdir GLAM; cd GLAM
-    git clone https://github.com/yvquanli/GLAM.git    # clone the code to ~/GLAM/GLAM
+    git clone https://github.com/qfoldit/GLAM.git    # clone the code to ~/GLAM/GLAM
     
 This is the guide for preparing the MoleculeNet dataset:
 
