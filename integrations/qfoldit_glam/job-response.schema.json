@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qfoldit/GLAM/blob/main/integrations/qfoldit_glam/job-response.schema.json",
+  "title": "qFoldIT GLAM adapter job response",
+  "type": "object",
+  "required": [
+    "job_id",
+    "contract",
+    "task",
+    "mission_id",
+    "mission_version",
+    "dataset",
+    "dataset_revision",
+    "parameters",
+    "status",
+    "created_at",
+    "scientific_validation_status",
+    "evidence_status"
+  ],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "contract": {
+      "const": "qfoldit.glam-adapter.job-response/0.1"
+    },
+    "task": {
+      "const": "adaptive-property-search"
+    },
+    "mission_id": {
+      "type": "string"
+    },
+    "mission_version": {
+      "type": "string"
+    },
+    "dataset": {
+      "type": "string"
+    },
+    "dataset_revision": {
+      "type": "string"
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "status": {
+      "enum": [
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "TIMED_OUT"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "started_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "scientific_validation_status": {
+      "const": "NOT_PERFORMED"
+    },
+    "evidence_status": {
+      "const": "NOT_CREATED"
+    },
+    "log_tail": {
+      "type": "string",
+      "maxLength": 8000
+    }
+  },
+  "additionalProperties": true
+}
