@@ -21,6 +21,7 @@ def valid_payload():
         "task": server.TASK_ID,
         "mission_id": "property-benchmark-001",
         "mission_version": "1.0.0",
+        "mission_inception_sha256": "sha256:" + "d" * 64,
         "submission_id": "11111111-1111-4111-8111-111111111111",
         "action_envelope_hash": "sha256:" + "a" * 64,
         "dataset": "demo",
@@ -45,6 +46,7 @@ class AdapterContractTests(unittest.TestCase):
         self.assertEqual(normalized["parameters"]["n_init_configs"], 1)
         self.assertEqual(normalized["parameters"]["split"], "scaffold")
         self.assertEqual(normalized["submission_id"], "11111111-1111-4111-8111-111111111111")
+        self.assertEqual(normalized["mission_inception_sha256"], "sha256:" + "d" * 64)
 
     def test_rejects_unknown_dataset(self):
         payload = valid_payload()
@@ -73,6 +75,12 @@ class AdapterContractTests(unittest.TestCase):
     def test_rejects_boolean_where_integer_is_required(self):
         payload = valid_payload()
         payload["parameters"]["seed"] = True
+        with self.assertRaises(server.RequestError):
+            server.normalize_request(payload)
+
+    def test_rejects_invalid_mission_inception_hash(self):
+        payload = valid_payload()
+        payload["mission_inception_sha256"] = "bad"
         with self.assertRaises(server.RequestError):
             server.normalize_request(payload)
 
