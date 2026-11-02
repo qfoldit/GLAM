@@ -12,23 +12,55 @@
     "submission_id",
     "action_envelope_hash",
     "dataset",
-    "dataset_revision"
+    "dataset_revision",
+    "mission_inception_sha256"
   ],
   "properties": {
-    "contract": {"const": "qfoldit.glam-adapter.job-request/0.2"},
-    "task": {"const": "adaptive-property-search"},
+    "contract": {
+      "const": "qfoldit.glam-adapter.job-request/0.3"
+    },
+    "task": {
+      "const": "adaptive-property-search"
+    },
     "mission_id": {
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
     },
-    "mission_version": {"type": "string", "minLength": 1, "maxLength": 64},
-    "submission_id": {"type": "string", "format": "uuid"},
-    "action_envelope_hash": {"type": "string", "pattern": "^sha256:[A-Fa-f0-9]{64}$"},
-    "tenant_id": {"type": ["string", "null"], "maxLength": 128},
+    "mission_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "submission_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "action_envelope_hash": {
+      "type": "string",
+      "pattern": "^sha256:[A-Fa-f0-9]{64}$"
+    },
+    "tenant_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 128
+    },
     "dataset": {
-      "enum": ["demo", "esol", "freesolv", "lipophilicity", "physprop_perturb", "bbbp", "bace", "sider", "toxcast", "tox21"]
+      "enum": [
+        "demo",
+        "esol",
+        "freesolv",
+        "lipophilicity",
+        "physprop_perturb",
+        "bbbp",
+        "bace",
+        "sider",
+        "toxcast",
+        "tox21"
+      ]
     },
     "dataset_revision": {
       "type": "string",
@@ -40,14 +72,54 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "n_init_configs": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
-        "n_low_fidelity_seed": {"type": "integer", "minimum": 1, "maximum": 3, "default": 1},
-        "n_top_blend": {"type": "integer", "minimum": 1, "maximum": 5, "default": 2},
-        "n_high_fidelity_seed": {"type": "integer", "minimum": 1, "maximum": 3, "default": 1},
-        "seed": {"type": "integer", "minimum": 0, "maximum": 2147483647, "default": 1234},
-        "split_seed": {"type": "integer", "minimum": 0, "maximum": 2147483647, "default": 1234},
-        "split": {"enum": ["scaffold", "random"], "default": "scaffold"}
+        "n_init_configs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 5
+        },
+        "n_low_fidelity_seed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "default": 1
+        },
+        "n_top_blend": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2
+        },
+        "n_high_fidelity_seed": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "default": 1
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "default": 1234
+        },
+        "split_seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "default": 1234
+        },
+        "split": {
+          "enum": [
+            "scaffold",
+            "random"
+          ],
+          "default": "scaffold"
+        }
       }
+    },
+    "mission_inception_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[A-Fa-f0-9]{64}$"
     }
   }
 }
