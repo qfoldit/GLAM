@@ -105,8 +105,10 @@ class Dataset(InMemoryDataset):
         self.split_seed = split_seed
         super(Dataset, self).__init__(root, transform, pre_transform, pre_filter)
         self.data, self.slices = torch.load(self.processed_paths[0])
-        trn, val, test = self.split(type=split)
-        self.train, self.val, self.test = trn, val, test
+        if split is None:
+            self.train = self.val = self.test = None
+        else:
+            self.train, self.val, self.test = self.split(type=split)
         self.mol_num_node_features = self[0].x.shape[1]
         self.mol_num_edge_features = self[0].edge_attr.shape[1]
         self.num_tasks = len(self.tasks)
