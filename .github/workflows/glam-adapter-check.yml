@@ -1,13 +1,15 @@
-name: GLAM adapter contract checks
+name: GLAM adapter and pipeline contract checks
 
 on:
   push:
     paths:
       - "integrations/qfoldit_glam/**"
+      - "src_1gp/**"
       - ".github/workflows/glam-adapter-check.yml"
   pull_request:
     paths:
       - "integrations/qfoldit_glam/**"
+      - "src_1gp/**"
       - ".github/workflows/glam-adapter-check.yml"
 
 permissions:
@@ -16,6 +18,7 @@ permissions:
 jobs:
   adapter-contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -23,9 +26,20 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Compile adapter
-        run: python -m py_compile integrations/qfoldit_glam/server.py
-      - name: Run standard-library tests
-        run: python -m unittest discover -s integrations/qfoldit_glam -p "test_*.py"
+      - name: Compile integration and research pipeline
+        run: |
+          python -m py_compile integrations/qfoldit_glam/server.py
+          python -m compileall -q src_1gp
+      - name: Run adapter and source-contract tests
+        run: python -m unittest discover -s integrations/qfoldit_glam -p "test_*.py" -v
       - name: Validate JSON schemas
-        run: python -c "import json,pathlib; [json.loads(p.read_text()) for p in pathlib.Path('integrations/qfoldit_glam').glob('*.schema.json')]"
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          paths = sorted(Path("integrations/qfoldit_glam").glob("*.schema.json"))
+          assert paths, "No adapter JSON schemas found"
+          for path in paths:
+              json.loads(path.read_text(encoding="utf-8"))
+              print(f"VALID JSON: {path}")
+          PY
