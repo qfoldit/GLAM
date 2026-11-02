@@ -281,10 +281,11 @@ def build_run_manifest(state: dict[str, Any], job_dir: Path) -> dict[str, Any]:
     encoded = json.dumps(
         manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
-    manifest_path.write_bytes(encoded + b"\n")
+    manifest_bytes = encoded + b"\n"
+    manifest_path.write_bytes(manifest_bytes)
     return {
         **manifest,
-        "run_manifest_sha256": hashlib.sha256(encoded).hexdigest(),
+        "run_manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
     }
 
 
