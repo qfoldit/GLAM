@@ -421,6 +421,7 @@ class GLAMHelper():
         gm = GPUManager()
         procs = []
         seeds = [1, 12, 123, 1234, 2, 4, 6, 8]
+        top_n = min(top_n, len(logs_summary))
         for i in range(top_n):
             config = logs_summary.iloc[i, :]['config']
             self.log('Configuration {}: {} ...'.format(i + 1, config))
