@@ -36,7 +36,7 @@ def auto_dataset(args):
     from dataset import Dataset
     if args.dataset in dataset_names["c"] + ['demo']:
         _dataset = Dataset(args.dataset_root,
-                           dataset=args.dataset, split_seed=args.split_seed)
+                           dataset=args.dataset, split=getattr(args, 'split', 'scaffold'), split_seed=args.split_seed)
         if args.loss in ['ce', 'mtce']:
             from trainer import TrainerMolBinaryClassificationNAN as Trainer
             args.out_dim = 2 * _dataset.num_tasks
@@ -50,7 +50,7 @@ def auto_dataset(args):
         if args.dataset == 'physprop_perturb':
             from dataset import PertubationDataset as Dataset
         _dataset = Dataset(args.dataset_root,
-                           dataset=args.dataset, split_seed=args.split_seed)
+                           dataset=args.dataset, split=getattr(args, 'split', 'scaffold'), split_seed=args.split_seed)
         args.out_dim = 1 * _dataset.num_tasks
     else:
         raise Exception('error dataset input')
@@ -151,8 +151,13 @@ class Dataset(InMemoryDataset):
     @staticmethod
     def is_valid_smiles(smi):
         try:
-            Chem.MolToSmiles(Chem.MolFromSmiles(smi), isomericSmiles=True)
-        except:
+            if Chem is None or not isinstance(smi, str) or not smi.strip():
+                return False
+            mol = Chem.MolFromSmiles(smi)
+            if mol is None:
+                return False
+            Chem.MolToSmiles(mol, isomericSmiles=True)
+        except Exception:
             print("not successfully processed smiles: ", smi)
             return False
         return True
@@ -164,7 +169,10 @@ class Dataset(InMemoryDataset):
             trn, val, test = torch.load(save_path)
             return trn, val, test
         elif type == 'random':
-            shuffled = self.shuffle()
+            generator = torch.Generator()
+            generator.manual_seed(int(self.split_seed or 0))
+            permutation = torch.randperm(len(self), generator=generator)
+            shuffled = self[permutation]
             train_size = int(0.8 * len(shuffled))
             val_size = int(0.1 * len(shuffled))
             trn = shuffled[:train_size]
@@ -173,13 +181,20 @@ class Dataset(InMemoryDataset):
             torch.save([trn, val, test], save_path)
             return trn, val, test
         elif type == 'scaffold':
-            shuffled = self.shuffle()
-            trn, val, test = random_scaffold_split(dataset=shuffled, smiles_list=shuffled.data.smi,
-                                                   null_value=-1, seed=self.split_seed)
+            generator = torch.Generator()
+            generator.manual_seed(int(self.split_seed or 0))
+            permutation = torch.randperm(len(self), generator=generator)
+            shuffled = self[permutation]
+            trn, val, test = random_scaffold_split(
+                dataset=shuffled,
+                smiles_list=shuffled.data.smi,
+                null_value=-1,
+                seed=int(self.split_seed or 0),
+            )
             torch.save([trn, val, test], save_path)
             return trn, val, test
         else:
-            self.log('Error: Unknown split type!!')
+            raise ValueError("split must be 'scaffold' or 'random'")
 
     @property
     def tasks(self):
