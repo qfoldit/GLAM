@@ -1,19 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/qfoldit/GLAM/blob/main/integrations/qfoldit_glam/job-response.schema.json",
-  "title": "qFoldIT GLAM adapter job response",
+  "title": "qFoldIT GLAM adapter job response 0.2",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "job_id",
     "contract",
     "task",
     "mission_id",
     "mission_version",
+    "submission_id",
+    "action_envelope_hash",
     "dataset",
     "dataset_revision",
+    "dataset_sha256",
+    "split",
     "parameters",
     "status",
     "created_at",
+    "started_at",
+    "completed_at",
+    "exit_code",
+    "error",
+    "artifact_status",
+    "artifact_count",
+    "run_manifest_sha256",
     "scientific_validation_status",
     "evidence_status"
   ],
@@ -23,22 +35,50 @@
       "format": "uuid"
     },
     "contract": {
-      "const": "qfoldit.glam-adapter.job-response/0.1"
+      "const": "qfoldit.glam-adapter.job-response/0.2"
     },
     "task": {
       "const": "adaptive-property-search"
     },
     "mission_id": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "mission_version": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
+    },
+    "submission_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "action_envelope_hash": {
+      "type": "string",
+      "pattern": "^sha256:[A-Fa-f0-9]{64}$"
+    },
+    "tenant_id": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "dataset": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "dataset_revision": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
+    },
+    "dataset_sha256": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
+    "split": {
+      "enum": [
+        "scaffold",
+        "random"
+      ]
     },
     "parameters": {
       "type": "object"
@@ -48,7 +88,8 @@
         "RUNNING",
         "SUCCEEDED",
         "FAILED",
-        "TIMED_OUT"
+        "TIMED_OUT",
+        "INTERRUPTED"
       ]
     },
     "created_at": {
@@ -81,6 +122,25 @@
         "null"
       ]
     },
+    "artifact_status": {
+      "enum": [
+        "PENDING",
+        "CREATED",
+        "NOT_CREATED",
+        "UNKNOWN"
+      ]
+    },
+    "artifact_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "run_manifest_sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
     "scientific_validation_status": {
       "const": "NOT_PERFORMED"
     },
@@ -91,6 +151,5 @@
       "type": "string",
       "maxLength": 8000
     }
-  },
-  "additionalProperties": true
+  }
 }
