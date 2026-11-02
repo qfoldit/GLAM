@@ -64,16 +64,8 @@ def read_logs(logs_dir: pathlib.PosixPath):
             if len(lines) < 2 or not lines[-1].startswith('{'):
                 continue
 
-            # read a sigle logfile to config from -2 line, and short the words for better visual experience
-            str_config_dict = lines[-2].replace('\n', '').strip().replace('mol_', 'm').replace('pro_', 'p') \
-                .replace('depth', 'd').replace('graph_res', 'res').replace('batch_size', 'bs') \
-                .replace('_TripletMessage', 'Trim').replace('_NNConv', 'NN').replace('_GCNConv', 'GCN') \
-                .replace('_GATConv', 'GAT').replace('hid_dim_alpha', 'a').replace('message_steps', 'step') \
-                .replace('Dropout(', '(').replace('Global', '').replace('_norm', 'n') \
-                .replace('_LayerNorm', 'LN').replace('_BatchNorm', 'BN').replace('_PairNorm', 'PN') \
-                .replace('_None', '0') \
-                .replace('LeakyReLU', 'LReLU')
-            config_for_print = ast.literal_eval(str_config_dict)
+            # Parse the original serialized configuration; never execute log content.
+            config_for_print = ast.literal_eval(lines[-2].strip())
             for item in ['dataset_root', 'seed', 'gpu', 'verbose_patience', 'out_dim',
                          'early_stop_patience', 'lr_reduce_rate', 'lr_reduce_patience']:
                 config_for_print.pop(item, None)
