@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qfoldit/GLAM/blob/main/integrations/qfoldit_glam/run-result.schema.json",
+  "title": "qFoldIT GLAM scientific run result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "job_id",
+    "mission_id",
+    "mission_version",
+    "submission_id",
+    "action_envelope_hash",
+    "task",
+    "dataset",
+    "execution",
+    "model_search",
+    "artifacts",
+    "artifact_count",
+    "created_at",
+    "scientific_validation_status",
+    "evidence_status"
+  ],
+  "properties": {
+    "contract": {
+      "const": "qfoldit.glam.run-result/1.0"
+    },
+    "job_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "mission_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mission_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "submission_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "action_envelope_hash": {
+      "type": "string",
+      "pattern": "^sha256:[A-Fa-f0-9]{64}$"
+    },
+    "tenant_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "task": {
+      "const": "adaptive-property-search"
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "adapter_version",
+        "python",
+        "platform",
+        "dependencies"
+      ],
+      "properties": {
+        "adapter_version": {
+          "type": "string"
+        },
+        "git_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "python": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "dependencies": {
+          "type": "object"
+        }
+      }
+    },
+    "model_search": {
+      "type": "object",
+      "required": [
+        "split",
+        "parameters"
+      ],
+      "properties": {
+        "split": {
+          "enum": [
+            "scaffold",
+            "random"
+          ]
+        },
+        "parameters": {
+          "type": "object"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "bytes",
+          "sha256",
+          "kind"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[A-Fa-f0-9]{64}$"
+          },
+          "kind": {
+            "enum": [
+              "model-checkpoint",
+              "run-output"
+            ]
+          }
+        }
+      }
+    },
+    "artifact_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "scientific_validation_status": {
+      "const": "NOT_PERFORMED"
+    },
+    "evidence_status": {
+      "const": "NOT_CREATED"
+    }
+  }
+}
