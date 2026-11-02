@@ -28,10 +28,10 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 ADAPTER_ID = "qfoldit.glam"
-ADAPTER_VERSION = "0.2.0"
-REQUEST_CONTRACT = "qfoldit.glam-adapter.job-request/0.2"
-RESPONSE_CONTRACT = "qfoldit.glam-adapter.job-response/0.2"
-RUN_RESULT_CONTRACT = "qfoldit.glam.run-result/1.0"
+ADAPTER_VERSION = "0.3.0"
+REQUEST_CONTRACT = "qfoldit.glam-adapter.job-request/0.3"
+RESPONSE_CONTRACT = "qfoldit.glam-adapter.job-response/0.3"
+RUN_RESULT_CONTRACT = "qfoldit.glam.run-result/1.1"
 TASK_ID = "adaptive-property-search"
 
 PROPERTY_DATASETS = {
@@ -92,7 +92,7 @@ def normalize_request(payload: Any) -> dict[str, Any]:
         raise RequestError(400, "request body must be a JSON object")
 
     allowed = {
-        "contract", "task", "mission_id", "mission_version", "submission_id",
+        "contract", "task", "mission_id", "mission_version", "mission_inception_sha256", "submission_id",
         "action_envelope_hash", "tenant_id", "dataset", "dataset_revision",
         "parameters",
     }
@@ -100,7 +100,7 @@ def normalize_request(payload: Any) -> dict[str, Any]:
     if unexpected:
         raise RequestError(400, "unsupported request fields: " + ", ".join(sorted(unexpected)))
     required = {
-        "contract", "task", "mission_id", "mission_version", "submission_id",
+        "contract", "task", "mission_id", "mission_version", "mission_inception_sha256", "submission_id",
         "action_envelope_hash", "dataset", "dataset_revision",
     }
     missing = required - set(payload)
@@ -115,6 +115,9 @@ def normalize_request(payload: Any) -> dict[str, Any]:
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}", mission_id):
         raise RequestError(400, "mission_id contains unsupported characters")
     mission_version = _require_string(payload["mission_version"], "mission_version", 64)
+    mission_inception_sha256 = _require_string(payload["mission_inception_sha256"], "mission_inception_sha256", 71)
+    if not re.fullmatch(r"sha256:[A-Fa-f0-9]{64}", mission_inception_sha256):
+        raise RequestError(400, "mission_inception_sha256 must use sha256:<64-hex>")
 
     submission_raw = _require_string(payload["submission_id"], "submission_id", 36)
     try:
@@ -161,6 +164,7 @@ def normalize_request(payload: Any) -> dict[str, Any]:
         "task": TASK_ID,
         "mission_id": mission_id,
         "mission_version": mission_version,
+        "mission_inception_sha256": mission_inception_sha256,
         "submission_id": submission_id,
         "action_envelope_hash": action_hash,
         "tenant_id": tenant_id,
@@ -329,6 +333,7 @@ def _write_run_result(job_dir: Path, state: dict[str, Any], output_dir: Path) ->
         "mission": {
             "mission_id": state["mission_id"],
             "mission_version": state["mission_version"],
+            "mission_inception_sha256": state["mission_inception_sha256"],
             "submission_id": state["submission_id"],
             "action_envelope_hash": state["action_envelope_hash"],
             "tenant_id": state.get("tenant_id"),
@@ -468,6 +473,7 @@ def _start_job(request: dict[str, Any]) -> dict[str, Any]:
             "task": request["task"],
             "mission_id": request["mission_id"],
             "mission_version": request["mission_version"],
+            "mission_inception_sha256": request["mission_inception_sha256"],
             "submission_id": request["submission_id"],
             "action_envelope_hash": request["action_envelope_hash"],
             "tenant_id": request.get("tenant_id"),
