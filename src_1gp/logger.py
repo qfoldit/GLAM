@@ -1,6 +1,8 @@
+import ast
 import pathlib
 import pandas as pd
 from metrics import auto_metrics
+from utils import dataset_run_dir
 
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 100)
@@ -21,7 +23,7 @@ def print_ongoing_info(logs_dir: pathlib.PosixPath):
 
 
 def auto_summarize_logs(dataset: str, ongoing=False):
-    logs_dir = pathlib.Path('./log_{}/'.format(dataset))
+    logs_dir = dataset_run_dir(dataset)
     if not logs_dir.exists():
         return None
     print('\n\n', '#' * 30, dataset, '#' * 30)
@@ -66,7 +68,7 @@ def read_logs(logs_dir: pathlib.PosixPath):
                 .replace('_LayerNorm', 'LN').replace('_BatchNorm', 'BN').replace('_PairNorm', 'PN') \
                 .replace('more_epochs_run', 'mer').replace('_None', '0') \
                 .replace('LeakyReLU', 'LReLU')
-            config_for_print = eval(str_config_dict)
+            config_for_print = ast.literal_eval(str_config_dict)
             for item in ['dataset_root', 'seed', 'gpu', 'verbose_patience', 'out_dim',
                          'early_stop_patience', 'lr_reduce_rate', 'lr_reduce_patience']:
                 del config_for_print[item]
@@ -77,9 +79,9 @@ def read_logs(logs_dir: pathlib.PosixPath):
             # print(p, loss_info, test_info)  # for some inf set
             log = {'id': p.name}
             if 'inf' in loss_info or 'inf' in test_info or 'inf' in valid_info: continue
-            log.update(eval(loss_info))
-            log.update(eval(test_info))
-            log.update(eval(valid_info))
+            log.update(ast.literal_eval(loss_info))
+            log.update(ast.literal_eval(test_info))
+            log.update(ast.literal_eval(valid_info))
             log.update(config_for_print)
             log.update({'config': lines[-2]})
             logs.append(log)
