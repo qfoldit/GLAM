@@ -148,7 +148,7 @@ if __name__ == '__main__':
                         help='seed to init a model')
     parser.add_argument('--split_seed', default=1234,
                         type=int, help='seed to split a dataset')
-    parser.add_argument('--split', default='scaffold', choices=['scaffold', 'random'],
+    parser.add_argument('--split', default='scaffold', choices=['scaffold', 'random', 'predefined'],
                         help='dataset split protocol')
     parser.add_argument('--search_seed', default=None, type=int,
                         help='seed controlling architecture/configuration search')
