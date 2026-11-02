@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/qfoldit/GLAM/blob/main/integrations/qfoldit_glam/mission-request.schema.json",
-  "title": "qFoldIT GLAM adapter job request",
+  "title": "qFoldIT GLAM adapter job request 0.2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,12 +9,14 @@
     "task",
     "mission_id",
     "mission_version",
+    "submission_id",
+    "action_envelope_hash",
     "dataset",
     "dataset_revision"
   ],
   "properties": {
     "contract": {
-      "const": "qfoldit.glam-adapter.job-request/0.1"
+      "const": "qfoldit.glam-adapter.job-request/0.2"
     },
     "task": {
       "const": "adaptive-property-search"
@@ -29,6 +31,19 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 64
+    },
+    "submission_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "action_envelope_hash": {
+      "type": "string",
+      "pattern": "^sha256:[A-Fa-f0-9]{64}$"
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
     },
     "dataset": {
       "enum": [
@@ -48,7 +63,14 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "description": "Caller-supplied dataset version or immutable identifier; not independently attested by this adapter."
+      "description": "Caller label; the adapter independently hashes the configured server-side CSV."
+    },
+    "split": {
+      "enum": [
+        "scaffold",
+        "random"
+      ],
+      "default": "scaffold"
     },
     "parameters": {
       "type": "object",
@@ -85,6 +107,12 @@
           "default": 1234
         },
         "split_seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "default": 1234
+        },
+        "search_seed": {
           "type": "integer",
           "minimum": 0,
           "maximum": 2147483647,
