@@ -1,9 +1,12 @@
 import argparse
+import hashlib
+import json
+import os
+import random
 from pathlib import Path
 import time
 import subprocess
-from random import choice
-from utils import GPUManager, md5
+from utils import GPUManager
 from logger import config2cmd
 from trainer import GLAMHelper
 from dataset import Dataset, PertubationDataset, dataset_names
@@ -13,11 +16,13 @@ from dataset import Dataset, PertubationDataset, dataset_names
 class GLAM():
     def __init__(self, args):
         self.args = args
+        self.rng = random.Random(int(args.seed))
         self.gm = GPUManager()
         self.seeds = [12, 123, 1234, 16, 32, 50, 64, 100, 128, 200]
         self.start = time.time()
-        self.logs_dir = Path('./log_{}/'.format(args.dataset))
-        Path.mkdir(self.logs_dir, exist_ok=True)
+        self.output_root = Path(os.environ.get('GLAM_OUTPUT_ROOT', Path.cwd())).resolve()
+        self.logs_dir = self.output_root / f'log_{args.dataset}'
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
         self.glam_helper = GLAMHelper(args.dataset, args.n_top_blend)
         self.searched_params = []
 
@@ -47,8 +52,13 @@ class GLAM():
                 proc.append(p)
                 time.sleep(5)
             print(config_id, i)
+        failures = []
         for p in proc:
-            p.wait()  # wait for all proc down
+            code = p.wait()
+            if code != 0:
+                failures.append((p.pid, code))
+        if failures:
+            raise RuntimeError(f'GLAM low-fidelity workers failed: {failures}')
         self.log('Search complete !', with_time=True)
 
     def sample_config(self):
@@ -57,46 +67,48 @@ class GLAM():
             'dataset_root': self.args.dataset_root,
             'seed': self.args.seed,
             'split_seed': self.args.split_seed,
-            'hid_dim_alpha': choice([1, 2, 3, 4, 6]),
-            'e_dim': choice([256, 512, 1024, 2048]),  # Excitation
+            'split': getattr(self.args, 'split', 'scaffold'),
+            'hid_dim_alpha': self.rng.choice([1, 2, 3, 4, 6]),
+            'e_dim': self.rng.choice([256, 512, 1024, 2048]),  # Excitation
 
-            'mol_block': choice(['_TripletMessage', '_NNConv', '_TripletMessageLight', '_GCNConv', '_GATConv']),
-            'message_steps': choice([1, 2, 3, 6]),
-            'mol_readout': choice(['Set2Set', 'GlobalPool5', 'GlobalLAPool', ]),
+            'mol_block': self.rng.choice(['_TripletMessage', '_NNConv', '_TripletMessageLight', '_GCNConv', '_GATConv']),
+            'message_steps': self.rng.choice([1, 2, 3, 6]),
+            'mol_readout': self.rng.choice(['Set2Set', 'GlobalPool5', 'GlobalLAPool', ]),
 
-            'pre_do': choice(['_None()', '_None()', 'Dropout(0.1)']),
-            'graph_do': choice(['_None()', '_None()', 'Dropout(0.1)']),
-            'flat_do': choice(['_None()', 'Dropout(0.1)', 'Dropout(0.2)', 'Dropout(0.5)']),
-            'end_do': choice(['_None()', 'Dropout(0.1)', 'Dropout(0.2)', 'Dropout(0.5)']),
+            'pre_do': self.rng.choice(['_None()', '_None()', 'Dropout(0.1)']),
+            'graph_do': self.rng.choice(['_None()', '_None()', 'Dropout(0.1)']),
+            'flat_do': self.rng.choice(['_None()', 'Dropout(0.1)', 'Dropout(0.2)', 'Dropout(0.5)']),
+            'end_do': self.rng.choice(['_None()', 'Dropout(0.1)', 'Dropout(0.2)', 'Dropout(0.5)']),
 
             # '_None'
-            'pre_norm': choice(['_None', '_BatchNorm', '_LayerNorm']),
-            'graph_norm': choice(['_None', '_None', '_None', '_BatchNorm', '_LayerNorm', '_PairNorm']),
-            'flat_norm': choice(['_None', '_None', '_None', '_BatchNorm', '_LayerNorm']),
-            'end_norm': choice(['_None', '_None', '_None', '_BatchNorm', '_LayerNorm']),
+            'pre_norm': self.rng.choice(['_None', '_BatchNorm', '_LayerNorm']),
+            'graph_norm': self.rng.choice(['_None', '_None', '_None', '_BatchNorm', '_LayerNorm', '_PairNorm']),
+            'flat_norm': self.rng.choice(['_None', '_None', '_None', '_BatchNorm', '_LayerNorm']),
+            'end_norm': self.rng.choice(['_None', '_None', '_None', '_BatchNorm', '_LayerNorm']),
 
-            'pre_act': choice(['_None', 'ReLU', 'LeakyReLU', 'RReLU', 'RReLU', 'RReLU']),
-            'graph_act': choice(['_None', 'ReLU', 'LeakyReLU', 'RReLU', 'RReLU', 'RReLU', 'CELU']),
-            'flat_act': choice(['_None', 'ReLU', 'LeakyReLU', 'RReLU', 'RReLU', 'RReLU', 'CELU']),
-            # 'end_act': choice(['_None', 'ReLU', 'LeakyReLU', 'RReLU', 'RReLU', 'RReLU', 'CELU']),
-            'graph_res': choice([1, 0]),
+            'pre_act': self.rng.choice(['_None', 'ReLU', 'LeakyReLU', 'RReLU', 'RReLU', 'RReLU']),
+            'graph_act': self.rng.choice(['_None', 'ReLU', 'LeakyReLU', 'RReLU', 'RReLU', 'RReLU', 'CELU']),
+            'flat_act': self.rng.choice(['_None', 'ReLU', 'LeakyReLU', 'RReLU', 'RReLU', 'RReLU', 'CELU']),
+            # 'end_act': self.rng.choice(['_None', 'ReLU', 'LeakyReLU', 'RReLU', 'RReLU', 'RReLU', 'CELU']),
+            'graph_res': self.rng.choice([1, 0]),
 
-            'loss': choice(['bcel']),  # bce
-            'batch_size': choice([4, 8, 12, 16, 32, 64, 128, 256, 512, 768]),
-            'optim': choice(['Adam', 'Ranger']),  # 'SGD'
-            'k': choice([1, 3, 6]),
+            'loss': self.rng.choice(['bcel']),  # bce
+            'batch_size': self.rng.choice([4, 8, 12, 16, 32, 64, 128, 256, 512, 768]),
+            'optim': self.rng.choice(['Adam', 'Ranger']),  # 'SGD'
+            'k': self.rng.choice([1, 3, 6]),
             'epochs': 30,  # 30
-            'lr': choice([0.01, 0.005, 0.001, 0.0005, 0.0001]),
+            'lr': self.rng.choice([0.01, 0.005, 0.001, 0.0005, 0.0001]),
             'early_stop_patience': 50,
         }
         if config['optim'] != 'Ranger':
             del config['k']
         if self.args.dataset in dataset_names["c"] + ['demo']:
-            config['loss'] = choice(['bcel'])
+            config['loss'] = self.rng.choice(['bcel'])
         elif self.args.dataset in dataset_names["r"] + ['physprop_perturb']:
-            config['loss'] = choice(['mse', 'mse', 'mse', 'mae', 'huber'])
-        config_id = md5(' '.join([k + ' ' + str(v)
-                        for k, v in config.items()]))
+            config['loss'] = self.rng.choice(['mse', 'mse', 'mse', 'mae', 'huber'])
+        config_id = hashlib.sha256(
+            json.dumps(config, sort_keys=True, separators=(',', ':'), default=str).encode('utf-8')
+        ).hexdigest()[:16]
         return config, config_id
 
     def auto_blend(self):
@@ -138,6 +150,8 @@ if __name__ == '__main__':
                         help='seed to init a model')
     parser.add_argument('--split_seed', default=1234,
                         type=int, help='seed to split a dataset')
+    parser.add_argument('--split', choices=['scaffold', 'random'], default='scaffold',
+                        help='dataset split strategy; recorded in every worker configuration')
     args = parser.parse_args()
     # args.dataset, args.n_init_configs, args.n_low_fidelity_seed, args.n_top_blend, args.n_high_fidelity_seed = 'physprop_perturb', 1, 1, 1, 1
     solver = GLAM(args)
