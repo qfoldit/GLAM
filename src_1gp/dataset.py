@@ -36,7 +36,8 @@ def auto_dataset(args):
     from dataset import Dataset
     if args.dataset in dataset_names["c"] + ['demo']:
         _dataset = Dataset(args.dataset_root,
-                           dataset=args.dataset, split=getattr(args, 'split', 'scaffold'), split_seed=args.split_seed)
+                           dataset=args.dataset, split=('predefined' if args.dataset == 'physprop_perturb' else getattr(args, 'split', 'scaffold')),
+                           split_seed=args.split_seed)
         if args.loss in ['ce', 'mtce']:
             from trainer import TrainerMolBinaryClassificationNAN as Trainer
             args.out_dim = 2 * _dataset.num_tasks
@@ -226,7 +227,7 @@ class PertubationDataset(Dataset):
                  pre_transform=None, pre_filter=None):
         self.dataset = dataset  # random / random_nan / scaffold
         self.split_seed = split_seed
-        super(PertubationDataset, self).__init__(root=root, dataset=dataset, split=None, split_seed=None)
+        super(PertubationDataset, self).__init__(root=root, dataset=dataset, split='predefined', split_seed=split_seed)
         self.data, self.slices = torch.load(self.processed_paths[0])
         trn, val, test = self.split(type=split)
         self.train, self.val, self.test = trn, val, test
@@ -260,8 +261,9 @@ class PertubationDataset(Dataset):
         torch.save((data, slices), self.processed_paths[0])
 
     def split(self, type):
-        save_path = Path(self.processed_paths[0]).parent / 'split_{}_{}_{}.ckpt'.format(self.split_seed, self.dataset,
-                                                                                         type)
+        if type not in (None, 'predefined'):
+            raise ValueError("physprop_perturb uses its predefined Label-based split")
+        save_path = Path(self.processed_paths[0]).parent / 'split_{}_{}_predefined.ckpt'.format(self.split_seed, self.dataset)
         if save_path.exists():
             trn, val, test = torch.load(save_path)
             return trn, val, test
