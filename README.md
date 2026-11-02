@@ -9,16 +9,22 @@ Access the paper by this sharedit link: https://rdcu.be/cQP0g
 
 ## qFoldIT fork and integration status
 
-This repository is the qFoldIT-managed fork of Yuquan Li's GLAM research implementation. The scientific method and original publication remain attributed to the original authors; this fork adds a separately scoped integration layer and does not claim ownership of upstream research.
+This repository is the qFoldIT-managed fork of Yuquan Li's GLAM research implementation. The scientific method and original publication remain attributed to the original authors; the qFoldIT adapter is a separately scoped integration layer and does not claim ownership of upstream research.
 
-The first integration slice is experimental and currently supports launching GLAM's existing adaptive molecular-property training/model-selection pipeline through a loopback-only, token-gated adapter. It does not yet expose direct per-molecule inference, validated drug-target/drug-drug screening endpoints, or Evidence 1.1 publication.
+The qFoldIT adapter exposes only the existing adaptive molecular-property training/model-selection workflow. Its versioned contracts are:
+- `qfoldit.glam-adapter.job-request/0.2`;
+- `qfoldit.glam-adapter.job-response/0.2`;
+- `qfoldit.glam.run-result/1.0`.
 
-- [qFoldIT GLAM adapter](integrations/qfoldit_glam/README.md)
-- [qFoldIT GLAM Scientific MCP server](https://github.com/qfoldit/UEFN-QFOLDIT/tree/main/runtime/glam-mcp) — experimental stdio MCP wrapper exposing only the current adapter capabilities.
+The adapter requires mission/submission provenance, binds the raw dataset CSV by SHA-256, records an explicit scaffold/random split and isolates every job's outputs. It verifies high-fidelity/model-selection artifacts before publishing the run-result manifest. It does **not** expose direct per-molecule inference, production DTI/DDI screening, independent scientific acceptance or Evidence 1.1 publication.
+
+- [qFoldIT GLAM adapter and production gates](integrations/qfoldit_glam/README.md)
 - [Job request schema](integrations/qfoldit_glam/mission-request.schema.json)
 - [Job response schema](integrations/qfoldit_glam/job-response.schema.json)
+- [Run-result manifest schema](integrations/qfoldit_glam/run-result.schema.json)
+- [qFoldIT GLAM Scientific MCP server](https://github.com/qfoldit/UEFN-QFOLDIT/tree/main/runtime/glam-mcp) — experimental protocol wrapper; it must be updated to the 0.2 adapter contract before being used with this branch.
 
-A successful process exit is not scientific validation. Results must be independently evaluated before they become accepted evidence, attribution, or commercial settlement.
+A successful process exit is not scientific validation. The GLAM run-result is a provenance-bearing computation artifact; an approved, independent validator must assess the relevant scientific claim before Evidence, attribution or commercial settlement can be accepted.
 
 ## Original abstract
 
