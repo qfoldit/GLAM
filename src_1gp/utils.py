@@ -41,23 +41,27 @@ def generate_scaffold(smiles, include_chirality=False):
 
 
 def split(scaffolds_dict, labels, weights, GLAM_size, random_seed=0):
-    # bbbp,bace,hiv:task=1
-    count = 0
-    minor_count = 0
-    minor_class = np.argmax(weights[0])  # weights are inverse of the ratio
-    minor_ratio = 1 / weights[0][minor_class]
+    """Select a deterministic, approximately balanced set of scaffold groups."""
+    keys = list(scaffolds_dict.keys())
+    if not keys or GLAM_size <= 0:
+        raise ValueError("scaffold split requires at least one group and a positive sample size")
+    minor_class = int(np.argmax(weights[0]))
+    minor_ratio = 1.0 / float(weights[0][minor_class])
     if minor_class == 0:
         minor_class = -1
     optimal_count = 0.1 * len(labels)
-    while (count < optimal_count * 0.9 or count > optimal_count * 1.1) \
-            or (minor_count < minor_ratio * optimal_count * 0.9 or minor_count > minor_ratio * optimal_count * 1.1):
-        random_seed += 1
-        random.seed(random_seed)
-        scaffold = random.GLAM(list(scaffolds_dict.keys()), GLAM_size)
-        count = sum([len(scaffolds_dict[s]) for s in scaffold])
-        index = [index for s in scaffold for index in scaffolds_dict[s]]
-        minor_count = (labels[index, 0] == minor_class).sum()
-    return scaffold, index
+    rng = random.Random(random_seed)
+    for _ in range(10000):
+        scaffold = rng.sample(keys, min(GLAM_size, len(keys)))
+        count = sum(len(scaffolds_dict[key]) for key in scaffold)
+        indices = [idx for key in scaffold for idx in scaffolds_dict[key]]
+        minor_count = int((labels[indices, 0] == minor_class).sum())
+        if (
+            optimal_count * 0.9 <= count <= optimal_count * 1.1
+            and minor_ratio * optimal_count * 0.9 <= minor_count <= minor_ratio * optimal_count * 1.1
+        ):
+            return scaffold, indices
+    raise RuntimeError("unable to construct a balanced scaffold split after 10000 attempts")
 
 
 def scaffold_split_fp(dataset, smiles_list, raw_labels, random_seed=8, null_value=-1, task_idx=None):
@@ -157,10 +161,9 @@ def random_scaffold_split(dataset, smiles_list, task_idx=None, null_value=0,
         scaffold = generate_scaffold(smiles, include_chirality=True)
         scaffolds[scaffold].append(ind)
 
-    # rng = np.random.RandomState(seed)
-    # scaffold_sets = rng.permutation(list(scaffolds.values()))  new version of numpy will raise error
     scaffold_sets = list(scaffolds.values())
-    np.random.shuffle(scaffold_sets)
+    rng = np.random.default_rng(seed)
+    rng.shuffle(scaffold_sets)
 
     n_total_valid = int(np.floor(frac_valid * len(dataset)))
     n_total_test = int(np.floor(frac_test * len(dataset)))
