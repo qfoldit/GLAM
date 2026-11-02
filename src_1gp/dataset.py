@@ -1,4 +1,5 @@
 import json
+import hashlib
 import random
 from random import shuffle
 from pathlib import Path
@@ -36,7 +37,7 @@ def auto_dataset(args):
     from dataset import Dataset
     if args.dataset in dataset_names["c"] + ['demo']:
         _dataset = Dataset(args.dataset_root,
-                           dataset=args.dataset, split_seed=args.split_seed)
+                           dataset=args.dataset, split=getattr(args, 'split', 'scaffold'), split_seed=args.split_seed)
         if args.loss in ['ce', 'mtce']:
             from trainer import TrainerMolBinaryClassificationNAN as Trainer
             args.out_dim = 2 * _dataset.num_tasks
@@ -50,7 +51,7 @@ def auto_dataset(args):
         if args.dataset == 'physprop_perturb':
             from dataset import PertubationDataset as Dataset
         _dataset = Dataset(args.dataset_root,
-                           dataset=args.dataset, split_seed=args.split_seed)
+                           dataset=args.dataset, split=getattr(args, 'split', 'scaffold'), split_seed=args.split_seed)
         args.out_dim = 1 * _dataset.num_tasks
     else:
         raise Exception('error dataset input')
@@ -158,13 +159,18 @@ class Dataset(InMemoryDataset):
         return True
 
     def split(self, type):
-        save_path = Path(self.processed_paths[0]).parent / 'split_{}_{}_{}.ckpt'.format(self.split_seed, self.dataset,
-                                                                                         type)
+        raw_path = Path(self.raw_paths[0])
+        raw_digest = hashlib.sha256(raw_path.read_bytes()).hexdigest()[:12]
+        save_path = Path(self.processed_paths[0]).parent / 'split_{}_{}_{}_{}.ckpt'.format(
+            self.split_seed, self.dataset, type, raw_digest
+        )
         if save_path.exists():
             trn, val, test = torch.load(save_path)
             return trn, val, test
         elif type == 'random':
-            shuffled = self.shuffle()
+            rng = np.random.default_rng(int(self.split_seed))
+            indices = rng.permutation(len(self)).tolist()
+            shuffled = self[torch.tensor(indices, dtype=torch.long)]
             train_size = int(0.8 * len(shuffled))
             val_size = int(0.1 * len(shuffled))
             trn = shuffled[:train_size]
@@ -173,13 +179,16 @@ class Dataset(InMemoryDataset):
             torch.save([trn, val, test], save_path)
             return trn, val, test
         elif type == 'scaffold':
-            shuffled = self.shuffle()
-            trn, val, test = random_scaffold_split(dataset=shuffled, smiles_list=shuffled.data.smi,
-                                                   null_value=-1, seed=self.split_seed)
+            trn, val, test = random_scaffold_split(
+                dataset=self,
+                smiles_list=self.data.smi,
+                null_value=-1,
+                seed=int(self.split_seed),
+            )
             torch.save([trn, val, test], save_path)
             return trn, val, test
         else:
-            self.log('Error: Unknown split type!!')
+            raise ValueError(f'Unknown split type: {type!r}. Expected random or scaffold.')
 
     @property
     def tasks(self):
@@ -211,7 +220,7 @@ class PertubationDataset(Dataset):
                  pre_transform=None, pre_filter=None):
         self.dataset = dataset  # random / random_nan / scaffold
         self.split_seed = split_seed
-        super(PertubationDataset, self).__init__(root=root, dataset=dataset, split=None, split_seed=None)
+        super(PertubationDataset, self).__init__(root=root, dataset=dataset, split=None, split_seed=split_seed)
         self.data, self.slices = torch.load(self.processed_paths[0])
         trn, val, test = self.split(type=split)
         self.train, self.val, self.test = trn, val, test
