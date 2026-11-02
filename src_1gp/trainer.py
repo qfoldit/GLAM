@@ -1,3 +1,4 @@
+import ast
 import time
 import torch
 import shutil
@@ -19,7 +20,7 @@ from metrics import blend_regression, blend_binary_classification_mt, auto_metri
 from loss import get_loss
 from model import model_args
 from dataset import auto_dataset
-from utils import GPUManager
+from utils import GPUManager, dataset_run_dir
 from logger import auto_summarize_logs, config2cmd, read_logs
 from dataset import perturb_test, dataset_names
 
@@ -58,11 +59,9 @@ class Trainer():
         # other
         self.start = time.time()
         self.print_log = print_log
-        cur_abs_file_dir = Path(__file__).resolve().parent
         save_id = datetime.utcnow().strftime(
             '%Y-%m-%d_%H:%M:%S.%f')[:-3] + '_' + 'seed_' + str(args.seed)
-        self.log_save_dir = cur_abs_file_dir / \
-            ('log_' + self.args.dataset) / '{}'.format(save_id)
+        self.log_save_dir = dataset_run_dir(self.args.dataset) / save_id
         Path.mkdir(self.log_save_dir.parent, exist_ok=True)
         Path.mkdir(self.log_save_dir, exist_ok=True)
         self.records = {'val_losses': []}
@@ -350,7 +349,7 @@ def _blend_and_inference(ids, configs, custom_dataset=None, log=print):
     log('Start to blend models and inference ...')
     outputs = []
     for id, config in zip(ids, configs):
-        args = Namespace(**eval(config))
+        args = Namespace(**ast.literal_eval(config))
         args.gpu = 0  # all
         args, dataset, _Trainer = auto_dataset(args)
         model = Model(dataset.mol_num_node_features,
@@ -365,7 +364,7 @@ def _blend_and_inference(ids, configs, custom_dataset=None, log=print):
                 custom_dataset, batch_size=32)
             log('Customed test dataset loaded!')
         # print(trainer.test_dataloader.dataset[0].smi)
-        trainer.log_save_dir = './log_{}/{}'.format(args.dataset, id)
+        trainer.log_save_dir = dataset_run_dir(args.dataset) / str(id)
         trainer.load_best_ckpt()
         log('Checkpoint {} loaded.'.format(id))
         output = trainer.valid_iterations(mode='inference')
@@ -389,7 +388,7 @@ class GLAMHelper():
         self.dataset = dataset
         self.n_blend = n_blend
         self.start = time.time()
-        self.logs_dir = pathlib.Path('./log_{}/'.format(self.dataset))
+        self.logs_dir = dataset_run_dir(self.dataset)
         self.log('GLAMHelper pr of {} start...'.format(dataset))
 
     def blend_and_inference(self, custom_dataset=None):
@@ -399,8 +398,7 @@ class GLAMHelper():
     def select_top_config(self):
         logs = read_logs(self.logs_dir)
         if len(logs) < 1:
-            self.log(
-                'Error: There is no log files found in {}!'.format(self.logs_dir))
+            raise RuntimeError('No completed GLAM low-fidelity runs were found in {}'.format(self.logs_dir))
         logs_pd = pd.DataFrame(logs)
         # index = logs_pd.loc[:, 'epochs'] >= 100  # assert evaluation epochs > 100 > search epochs
         metrics = auto_metrics(self.dataset)
@@ -416,24 +414,33 @@ class GLAMHelper():
     def high_fidelity_training(self, top_n, n_seed):
         self.log('Run configurations for more epochs to achieve better results...')
         logs_summary = auto_summarize_logs(self.dataset)
+        if logs_summary is None or logs_summary.empty:
+            raise RuntimeError('No GLAM search summary is available for high-fidelity training')
+        if top_n <= 0 or n_seed <= 0:
+            raise ValueError('top_n and n_seed must be positive')
         gm = GPUManager()
         procs = []
         seeds = [1, 12, 123, 1234, 2, 4, 6, 8]
         for i in range(top_n):
             config = logs_summary.iloc[i, :]['config']
             self.log('Configuration {}: {} ...'.format(i + 1, config))
-            config = eval(config)
+            config = ast.literal_eval(config)
             config['epochs'] = 2000
             config['note'] = 'more_epochs_run'
             for seed in seeds[:n_seed]:
                 config['seed'] = seed
                 config['gpu'] = gm.wait_free_gpu(thre=0.5)
                 cmd = config2cmd(config)
-                p = subprocess.Popen(cmd, shell=True)
+                p = subprocess.Popen(cmd, shell=False, cwd=Path(__file__).resolve().parent)
                 procs.append(p)
                 time.sleep(10)
-        for p in procs:
-            p.wait()
+        failures = []
+        for process in procs:
+            exit_code = process.wait()
+            if exit_code != 0:
+                failures.append((process.pid, exit_code))
+        if failures:
+            raise RuntimeError('GLAM high-fidelity worker failures: {}'.format(failures))
         self.log('Run Complete!', with_time=True)
 
     def log(self, msg=None, with_time=False):
