@@ -5,76 +5,197 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "contract", "run_id", "adapter", "engine", "mission", "task",
-    "dataset", "parameters", "artifacts", "completed_at",
-    "scientific_validation_status", "evidence_status"
+    "contract",
+    "run_id",
+    "adapter",
+    "engine",
+    "mission",
+    "task",
+    "dataset",
+    "parameters",
+    "artifacts",
+    "completed_at",
+    "scientific_validation_status",
+    "evidence_status"
   ],
   "properties": {
-    "contract": {"const": "qfoldit.glam.run-result/1.0"},
-    "run_id": {"type": "string", "format": "uuid"},
+    "contract": {
+      "const": "qfoldit.glam.run-result/1.1"
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
     "adapter": {
       "type": "object",
-      "required": ["id", "version"],
+      "required": [
+        "id",
+        "version"
+      ],
       "properties": {
-        "id": {"const": "qfoldit.glam"},
-        "version": {"type": "string"}
+        "id": {
+          "const": "qfoldit.glam"
+        },
+        "version": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
     "engine": {
       "type": "object",
-      "required": ["name", "source_commit", "python_version", "torch_version", "torch_geometric_version", "rdkit_version"],
+      "required": [
+        "name",
+        "source_commit",
+        "python_version",
+        "torch_version",
+        "torch_geometric_version",
+        "rdkit_version"
+      ],
       "properties": {
-        "name": {"const": "GLAM"},
-        "source_commit": {"type": ["string", "null"]},
-        "python_version": {"type": "string"},
-        "torch_version": {"type": ["string", "null"]},
-        "torch_geometric_version": {"type": ["string", "null"]},
-        "rdkit_version": {"type": ["string", "null"]}
+        "name": {
+          "const": "GLAM"
+        },
+        "source_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "python_version": {
+          "type": "string"
+        },
+        "torch_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "torch_geometric_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rdkit_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       },
       "additionalProperties": false
     },
     "mission": {
       "type": "object",
-      "required": ["mission_id", "mission_version", "submission_id", "action_envelope_hash", "tenant_id"],
+      "required": [
+        "mission_id",
+        "mission_version",
+        "submission_id",
+        "action_envelope_hash",
+        "tenant_id",
+        "mission_inception_sha256"
+      ],
       "properties": {
-        "mission_id": {"type": "string"},
-        "mission_version": {"type": "string"},
-        "submission_id": {"type": "string", "format": "uuid"},
-        "action_envelope_hash": {"type": "string", "pattern": "^sha256:[A-Fa-f0-9]{64}$"},
-        "tenant_id": {"type": ["string", "null"]}
+        "mission_id": {
+          "type": "string"
+        },
+        "mission_version": {
+          "type": "string"
+        },
+        "submission_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "action_envelope_hash": {
+          "type": "string",
+          "pattern": "^sha256:[A-Fa-f0-9]{64}$"
+        },
+        "tenant_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mission_inception_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[A-Fa-f0-9]{64}$"
+        }
       },
       "additionalProperties": false
     },
-    "task": {"const": "adaptive-property-search"},
+    "task": {
+      "const": "adaptive-property-search"
+    },
     "dataset": {
       "type": "object",
-      "required": ["id", "revision", "sha256", "split", "split_seed"],
+      "required": [
+        "id",
+        "revision",
+        "sha256",
+        "split",
+        "split_seed"
+      ],
       "properties": {
-        "id": {"type": "string"},
-        "revision": {"type": "string"},
-        "sha256": {"type": "string", "pattern": "^[A-Fa-f0-9]{64}$"},
-        "split": {"enum": ["scaffold", "random"]},
-        "split_seed": {"type": "integer"}
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        },
+        "split": {
+          "enum": [
+            "scaffold",
+            "random"
+          ]
+        },
+        "split_seed": {
+          "type": "integer"
+        }
       },
       "additionalProperties": false
     },
-    "parameters": {"type": "object"},
+    "parameters": {
+      "type": "object"
+    },
     "artifacts": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["path", "bytes", "sha256"],
+        "required": [
+          "path",
+          "bytes",
+          "sha256"
+        ],
         "properties": {
-          "path": {"type": "string"},
-          "bytes": {"type": "integer", "minimum": 0},
-          "sha256": {"type": "string", "pattern": "^[A-Fa-f0-9]{64}$"}
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[A-Fa-f0-9]{64}$"
+          }
         },
         "additionalProperties": false
       }
     },
-    "completed_at": {"type": "string", "format": "date-time"},
-    "scientific_validation_status": {"const": "NOT_PERFORMED"},
-    "evidence_status": {"const": "NOT_CREATED"}
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "scientific_validation_status": {
+      "const": "NOT_PERFORMED"
+    },
+    "evidence_status": {
+      "const": "NOT_CREATED"
+    }
   }
 }
