@@ -1,85 +1,178 @@
-# qFoldIT GLAM Adapter (experimental)
+# qFoldIT GLAM Adapter
 
-This directory defines the first controlled integration slice between the GLAM research implementation and the qFoldIT Scientific Mission Control Plane.
+**Adapter:** `qfoldit.glam`  
+**Adapter version:** `0.2.0`  
+**Request:** `qfoldit.glam-adapter.job-request/0.2`  
+**Job response:** `qfoldit.glam-adapter.job-response/0.2`  
+**Run result:** `qfoldit.glam.run-result/1.0`  
+**Authority:** molecular-property model training / model selection and run artifacts only
 
-## Scope
+This is a bounded service adapter around GLAM's existing adaptive molecular-property training and model-selection pipeline. It is not an independent scientific validator and cannot issue Evidence 1.1.
 
-The current adapter exposes a loopback-only HTTP API for launching GLAM's existing adaptive molecular-property training/model-selection pipeline. It is intentionally limited to that verified execution path.
+## qFoldIT architecture placement
 
-It does not yet expose per-molecule inference, drug-target interaction screening, drug-drug interaction prediction, a scientific validator, or Evidence 1.1 publication. A process exiting successfully means only that the GLAM command completed; it is not a scientifically accepted result.
+```text
+Mission Contract + Scientific Action Envelope
+                    |
+                    v
+          qFoldIT Control Plane
+                    |
+          authenticated adapter call
+                    |
+                    v
+            GLAM adapter / worker
+                    |
+        model training / model selection
+                    |
+                    v
+         immutable run-result manifest
+                    |
+          GLAM prediction artifacts
+                    |
+                    v
+       independent, task-appropriate validator
+                    |
+       validation.completed/1.1 / Evidence 1.1
+```
+
+GLAM owns its computational run and artifacts. Mission semantics, authorization, queue admission, customer policy and Evidence authority remain outside GLAM. UEFN/Verse is not a GLAM client and must never receive GLAM credentials, dataset paths, or worker commands.
+
+## Supported capability
+
+The only capability exposed by this adapter is `adaptive-property-search`: launch the existing `src_1gp/glam.py` adaptive training/model-selection pipeline against a server-configured dataset root.
+
+The current adapter does **not** claim:
+- direct inference for a molecule supplied by a mission;
+- validated arbitrary candidate ranking;
+- a production DTI or DDI screening API;
+- an activity/affinity result for a specific molecule;
+- independent scientific acceptance;
+- Evidence 1.1 publication.
+
+The repository contains DTI/DDI research modules, but those are not exposed by this first qFoldIT adapter. They require separate contracts, dataset manifests, benchmark protocols and integration tests.
 
 ## API
 
-- GET /health — service status and whether job execution is enabled.
-- GET /v1/capabilities — declared task, datasets and run bounds.
-- POST /v1/jobs — validate and start an adaptive property-search run.
-- GET /v1/jobs/{job_id} — retrieve status and a bounded log tail.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/healthz` | Process liveness |
+| GET | `/readyz` | Dependency and execution readiness |
+| GET | `/v1/version` | Adapter, contract and dependency versions |
+| GET | `/v1/capabilities` | Declared and bounded capabilities |
+| POST | `/v1/jobs` | Submit one adaptive property-search job |
+| GET | `/v1/jobs/{job_id}` | Read job lifecycle and bounded log tail |
+| GET | `/v1/runs/{job_id}/manifest` | Read the completed run-result manifest |
 
-Job creation and job inspection require a bearer token provided through QFOLDIT_GLAM_TOKEN. Without this variable the service remains read-only. The server binds to 127.0.0.1 only; do not expose it directly to a network.
+Job creation, job inspection and run-manifest retrieval require `Authorization: Bearer <QFOLDIT_GLAM_TOKEN>`. The adapter binds to `127.0.0.1` by default. Remote deployments require a reviewed private gateway, workload identity, tenant authorization, TLS, managed secrets, durable queue/recovery, audit and retention controls.
 
-## Run locally
+## Request contract
 
-From the repository root, install and verify the GLAM research dependencies as documented in the root README. Set GLAM_GP_DATASET_ROOT to a prepared GLAM-GP dataset directory, except when using the bundled demo dataset. Configure a strong local token:
+A request binds the computation to the canonical mission and submission:
 
-    export GLAM_GP_DATASET_ROOT="$PWD/Dataset/GLAM-GP"
-    export QFOLDIT_GLAM_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
-    python integrations/qfoldit_glam/server.py
+```json
+{
+  "contract": "qfoldit.glam-adapter.job-request/0.2",
+  "task": "adaptive-property-search",
+  "mission_id": "property-benchmark-001",
+  "mission_version": "1.0.0",
+  "submission_id": "11111111-1111-4111-8111-111111111111",
+  "action_envelope_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "tenant_id": "tenant-example",
+  "dataset": "demo",
+  "dataset_revision": "bundled-demo",
+  "parameters": {
+    "n_init_configs": 1,
+    "n_low_fidelity_seed": 1,
+    "n_top_blend": 1,
+    "n_high_fidelity_seed": 1,
+    "seed": 1234,
+    "split_seed": 1234,
+    "split": "scaffold"
+  }
+}
+```
 
-Windows PowerShell equivalent:
+The accepted datasets and numeric bounds are enforced by the adapter and the JSON Schema. Supported split strategies are `scaffold` and `random`; `scaffold` is the default. Requests cannot contain commands, scripts, Python expressions, arbitrary paths, environment variables, or uploaded code.
 
-    $env:GLAM_GP_DATASET_ROOT = "$PWD\Dataset\GLAM-GP"
-    $env:QFOLDIT_GLAM_TOKEN = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
-    python integrations/qfoldit_glam/server.py
+## Run-result manifest and artifacts
 
-The bundled demo uses src_1gp/demo and does not require GLAM_GP_DATASET_ROOT, but it still requires the legacy GLAM dependencies.
+A process exit code is not enough to declare the GLAM task complete. When the worker exits successfully, the adapter verifies that the job-scoped output contains the expected high-fidelity and model-selection artifacts, including:
+- at least one `best_save.ckpt`;
+- `inf_ckpt_selected.csv`;
+- `inference_log.txt`;
+- `search_result.csv`.
 
-## Example job request
+Each artifact receives a SHA-256 digest and byte count. The adapter writes `run-result.json` conforming to `run-result.schema.json`. The manifest records:
+- mission ID/version, submission UUID and action-envelope hash;
+- dataset ID/revision and calculated raw CSV SHA-256;
+- split method and split seed;
+- GLAM Git commit when available;
+- Python, PyTorch, PyG and RDKit versions when available;
+- normalized run parameters;
+- output artifact paths, byte counts and hashes;
+- run completion timestamp.
 
-    {
-      "contract": "qfoldit.glam-adapter.job-request/0.1",
-      "task": "adaptive-property-search",
-      "mission_id": "property-benchmark-001",
-      "mission_version": "1.0.0",
-      "dataset": "demo",
-      "dataset_revision": "bundled-demo",
-      "parameters": {
-        "n_init_configs": 1,
-        "n_low_fidelity_seed": 1,
-        "n_top_blend": 1,
-        "n_high_fidelity_seed": 1,
-        "seed": 1234,
-        "split_seed": 1234
-      }
-    }
+Job outputs are isolated under `QFOLDIT_GLAM_JOB_ROOT/<job_id>/output`. No job shares a mutable `log_<dataset>` directory with another qFoldIT job.
 
-For example, to submit the request locally, save it as request.json and use:
+The adapter deliberately returns:
+- `scientific_validation_status = NOT_PERFORMED`;
+- `evidence_status = NOT_CREATED`.
 
-    curl -X POST http://127.0.0.1:8787/v1/jobs \
-      -H "Authorization: Bearer $QFOLDIT_GLAM_TOKEN" \
-      -H "Content-Type: application/json" \
-      --data-binary @request.json
+These are invariant authority boundaries, not temporary UI states. Only a separately approved validator and the canonical Evidence boundary can advance them.
 
-The API accepts dataset identifiers, bounded numeric parameters and mission metadata only. It never accepts shell commands, script paths, arbitrary Python expressions, uploaded code, or user-selected filesystem paths.
+## Reproducibility and worker safety changes
 
-## Data and provenance
+The qFoldIT pipeline hardening includes:
+- `subprocess.Popen(..., shell=False)` for low- and high-fidelity workers;
+- non-zero child exit codes fail the parent run;
+- seeded architecture sampling uses a local `random.Random(seed)`;
+- random split uses a local NumPy generator;
+- scaffold split uses a local seeded NumPy generator and deterministic scaffold sampler;
+- the requested split is passed explicitly to the dataset loader and recorded in configuration;
+- split-cache filenames include a digest of the raw dataset file;
+- high-fidelity checkpoint selection excludes low-fidelity search checkpoints;
+- high-fidelity model outputs are isolated by job output root;
+- log configuration parsing uses `ast.literal_eval`, not `eval`.
 
-For non-demo datasets, the adapter uses the server-configured GLAM_GP_DATASET_ROOT. Callers cannot override the path in a job request. dataset_revision is recorded as caller-supplied provenance metadata; this adapter does not independently attest the content of the dataset. A future ingestion service should calculate and attest content digests.
+This establishes code-level and adapter-level controls. It does not by itself demonstrate that a particular GLAM benchmark passed, that all historical datasets are compatible with the current Python/PyTorch stack, or that the model generalizes to an external target.
 
-The adapter persists job status and logs under the user cache directory by default, or QFOLDIT_GLAM_JOB_ROOT if set. These artifacts may contain operational details; protect them using host-level access controls.
+## Local run
 
-## qFoldIT integration boundary
+From the repository root, install the research dependencies using the GLAM environment documented in the root README. Prepare the selected dataset under a server-controlled directory and configure:
 
-qFoldIT Mission Contracts route work to this adapter through a Scientific MCP or control-plane service. UEFN/Verse is a presentation/runtime surface and must not call GLAM directly. GLAM's output is a model-run artifact, not a validator decision. An approved independent validator must evaluate candidate submissions before any Evidence record, scientific attribution or commercial settlement is accepted.
+```bash
+export GLAM_GP_DATASET_ROOT="$PWD/Dataset/GLAM-GP"
+export QFOLDIT_GLAM_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+export QFOLDIT_GLAM_JOB_ROOT="$PWD/.qfoldit-glam-jobs"
+python integrations/qfoldit_glam/server.py
+```
+
+For the bundled demo, `GLAM_GP_DATASET_ROOT` is not required. The adapter still requires the GLAM research dependencies and a prepared demo CSV.
 
 ## Verification
 
-Run the adapter's standard-library tests:
+Run the light-weight adapter and source-contract suite:
 
-    python -m py_compile integrations/qfoldit_glam/server.py
-    python -m unittest discover -s integrations/qfoldit_glam -p "test_*.py"
+```bash
+python -m py_compile integrations/qfoldit_glam/server.py
+python -m compileall -q src_1gp
+python -m unittest discover -s integrations/qfoldit_glam -p "test_*.py" -v
+```
 
-The tests exercise request bounds and command construction; they do not install GLAM's PyTorch/RDKit dependencies or demonstrate a successful scientific run.
+These tests cover request validation, provenance, parameter bounds, safe argv construction, artifact-manifest requirements and source-level worker/split invariants. They do not replace an end-to-end training run, model-performance benchmark, locked holdout evaluation or independent scientific review.
 
-## Maturity
+## Production acceptance gates
 
-Status: experimental integration scaffold. Compatibility with current Python/PyTorch/PyG/RDKit releases, dataset-specific behavior, benchmark performance, and production deployment require separate verification.
+Do not mark this adapter production-ready until all of the following have separate evidence:
+1. A pinned, reproducible Python/PyTorch/PyG/RDKit environment and immutable container digest.
+2. A successful end-to-end demo job showing low-fidelity training, high-fidelity training, checkpoint selection, ensemble inference and manifest generation.
+3. A representative real-dataset run with verified dataset hash and split manifest.
+4. Locked holdout evaluation, baselines, repeated seeds, uncertainty/calibration and applicability-domain analysis.
+5. Model artifacts can be retrieved from durable controlled storage and reproduced by an independent operator.
+6. Remote workload identity, tenant isolation, durable job queue/recovery, cancellation, monitoring and retention have passed operational review.
+7. An independent validator appropriate to the mission has evaluated the submitted prediction artifacts.
+8. The Evidence 1.1 conformance path has consumed the validator's signed result.
+
+## Scientific and licensing boundary
+
+GLAM's research method and original publication remain attributed to the original authors. qFoldIT's adapter is a separate integration layer. Preserve the upstream license, publication citation, dataset licenses and third-party dependency notices. The qFoldIT wrapper must not be interpreted as a transfer of ownership of upstream GLAM research.
