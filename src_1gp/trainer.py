@@ -1,4 +1,6 @@
 import time
+import ast
+import os
 import torch
 import shutil
 import pathlib
@@ -59,10 +61,10 @@ class Trainer():
         self.start = time.time()
         self.print_log = print_log
         cur_abs_file_dir = Path(__file__).resolve().parent
+        output_root = Path(os.environ.get('GLAM_OUTPUT_ROOT', cur_abs_file_dir)).expanduser().resolve()
         save_id = datetime.utcnow().strftime(
             '%Y-%m-%d_%H:%M:%S.%f')[:-3] + '_' + 'seed_' + str(args.seed)
-        self.log_save_dir = cur_abs_file_dir / \
-            ('log_' + self.args.dataset) / '{}'.format(save_id)
+        self.log_save_dir = output_root / ('log_' + self.args.dataset) / save_id
         Path.mkdir(self.log_save_dir.parent, exist_ok=True)
         Path.mkdir(self.log_save_dir, exist_ok=True)
         self.records = {'val_losses': []}
@@ -350,7 +352,7 @@ def _blend_and_inference(ids, configs, custom_dataset=None, log=print):
     log('Start to blend models and inference ...')
     outputs = []
     for id, config in zip(ids, configs):
-        args = Namespace(**eval(config))
+        args = Namespace(**ast.literal_eval(str(config)))
         args.gpu = 0  # all
         args, dataset, _Trainer = auto_dataset(args)
         model = Model(dataset.mol_num_node_features,
@@ -365,7 +367,8 @@ def _blend_and_inference(ids, configs, custom_dataset=None, log=print):
                 custom_dataset, batch_size=32)
             log('Customed test dataset loaded!')
         # print(trainer.test_dataloader.dataset[0].smi)
-        trainer.log_save_dir = './log_{}/{}'.format(args.dataset, id)
+        output_root = Path(os.environ.get('GLAM_OUTPUT_ROOT', Path.cwd())).expanduser().resolve()
+        trainer.log_save_dir = output_root / f'log_{args.dataset}' / str(id)
         trainer.load_best_ckpt()
         log('Checkpoint {} loaded.'.format(id))
         output = trainer.valid_iterations(mode='inference')
@@ -389,7 +392,9 @@ class GLAMHelper():
         self.dataset = dataset
         self.n_blend = n_blend
         self.start = time.time()
-        self.logs_dir = pathlib.Path('./log_{}/'.format(self.dataset))
+        output_root = pathlib.Path(os.environ.get('GLAM_OUTPUT_ROOT', pathlib.Path.cwd())).expanduser().resolve()
+        self.logs_dir = output_root / f'log_{self.dataset}'
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
         self.log('GLAMHelper pr of {} start...'.format(dataset))
 
     def blend_and_inference(self, custom_dataset=None):
@@ -399,9 +404,13 @@ class GLAMHelper():
     def select_top_config(self):
         logs = read_logs(self.logs_dir)
         if len(logs) < 1:
-            self.log(
-                'Error: There is no log files found in {}!'.format(self.logs_dir))
+            raise RuntimeError(f'No completed GLAM model runs found in {self.logs_dir}')
         logs_pd = pd.DataFrame(logs)
+        if 'note' not in logs_pd.columns:
+            raise RuntimeError('GLAM run logs do not contain a model-selection note')
+        logs_pd = logs_pd[logs_pd['note'].astype(str).str.startswith('more_epochs_run_')]
+        if logs_pd.empty:
+            raise RuntimeError('No successful high-fidelity checkpoints are available for blending')
         # index = logs_pd.loc[:, 'epochs'] >= 100  # assert evaluation epochs > 100 > search epochs
         metrics = auto_metrics(self.dataset)
         n_blend = len(logs_pd) if len(logs_pd) < self.n_blend else self.n_blend
@@ -416,24 +425,34 @@ class GLAMHelper():
     def high_fidelity_training(self, top_n, n_seed):
         self.log('Run configurations for more epochs to achieve better results...')
         logs_summary = auto_summarize_logs(self.dataset)
+        if logs_summary is None or logs_summary.empty:
+            raise RuntimeError('GLAM low-fidelity stage produced no usable model summaries')
+        top_n = min(int(top_n), len(logs_summary))
+        if top_n < 1:
+            raise RuntimeError('At least one top configuration is required for high-fidelity training')
         gm = GPUManager()
         procs = []
         seeds = [1, 12, 123, 1234, 2, 4, 6, 8]
         for i in range(top_n):
             config = logs_summary.iloc[i, :]['config']
             self.log('Configuration {}: {} ...'.format(i + 1, config))
-            config = eval(config)
+            config = ast.literal_eval(str(config))
             config['epochs'] = 2000
-            config['note'] = 'more_epochs_run'
+            config['note'] = f'more_epochs_run_{i}'
             for seed in seeds[:n_seed]:
                 config['seed'] = seed
                 config['gpu'] = gm.wait_free_gpu(thre=0.5)
                 cmd = config2cmd(config)
-                p = subprocess.Popen(cmd, shell=True)
+                p = subprocess.Popen(cmd, shell=False)
                 procs.append(p)
                 time.sleep(10)
+        failures = []
         for p in procs:
-            p.wait()
+            code = p.wait()
+            if code != 0:
+                failures.append((p.pid, code))
+        if failures:
+            raise RuntimeError(f'GLAM high-fidelity workers failed: {failures}')
         self.log('Run Complete!', with_time=True)
 
     def log(self, msg=None, with_time=False):
