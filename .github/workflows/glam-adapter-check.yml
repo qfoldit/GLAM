@@ -1,4 +1,4 @@
-name: GLAM adapter contract checks
+name: GLAM adapter and runtime contract checks
 
 on:
   push:
@@ -11,10 +11,21 @@ on:
       - "src_1gp/logger.py"
       - "src_1gp/run.py"
       - "src_1gp/reproducibility.py"
+      - "src_1gp/test_reproducibility.py"
+      - "deployment/**"
       - ".github/workflows/glam-adapter-check.yml"
   pull_request:
     paths:
       - "integrations/qfoldit_glam/**"
+      - "src_1gp/glam.py"
+      - "src_1gp/trainer.py"
+      - "src_1gp/dataset.py"
+      - "src_1gp/utils.py"
+      - "src_1gp/logger.py"
+      - "src_1gp/run.py"
+      - "src_1gp/reproducibility.py"
+      - "src_1gp/test_reproducibility.py"
+      - "deployment/**"
       - ".github/workflows/glam-adapter-check.yml"
 
 permissions:
@@ -33,8 +44,8 @@ jobs:
       - name: Compile adapter and GLAM runtime
         run: python -m py_compile integrations/qfoldit_glam/server.py src_1gp/glam.py src_1gp/trainer.py src_1gp/dataset.py src_1gp/utils.py src_1gp/logger.py src_1gp/run.py src_1gp/reproducibility.py
       - name: Test deterministic search helpers
-        run: python -m unittest src_1gp.test_reproducibility
-      - name: Run standard-library tests
+        run: python -m unittest discover -s src_1gp -p "test_reproducibility.py"
+      - name: Run adapter contract and manifest tests
         run: python -m unittest discover -s integrations/qfoldit_glam -p "test_*.py"
       - name: Validate JSON schemas
         run: python -c "import json,pathlib; [json.loads(p.read_text()) for p in pathlib.Path('integrations/qfoldit_glam').glob('*.schema.json')]"
