@@ -1,10 +1,10 @@
 # qFoldIT GLAM Adapter
 
 **Adapter:** `qfoldit.glam`  
-**Adapter version:** `0.2.0`  
-**Request:** `qfoldit.glam-adapter.job-request/0.2`  
-**Job response:** `qfoldit.glam-adapter.job-response/0.2`  
-**Run result:** `qfoldit.glam.run-result/1.0`  
+**Adapter version:** `0.3.0`  
+**Request:** `qfoldit.glam-adapter.job-request/0.3`  
+**Job response:** `qfoldit.glam-adapter.job-response/0.3`  
+**Run result:** `qfoldit.glam.run-result/1.1`  
 **Authority:** molecular-property model training / model selection and run artifacts only
 
 This is a bounded service adapter around GLAM's existing adaptive molecular-property training and model-selection pipeline. It is not an independent scientific validator and cannot issue Evidence 1.1.
@@ -71,10 +71,11 @@ A request binds the computation to the canonical mission and submission:
 
 ```json
 {
-  "contract": "qfoldit.glam-adapter.job-request/0.2",
+  "contract": "qfoldit.glam-adapter.job-request/0.3",
   "task": "adaptive-property-search",
   "mission_id": "property-benchmark-001",
   "mission_version": "1.0.0",
+  "mission_inception_sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
   "submission_id": "11111111-1111-4111-8111-111111111111",
   "action_envelope_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "tenant_id": "tenant-example",
@@ -103,7 +104,7 @@ A process exit code is not enough to declare the GLAM task complete. When the wo
 - `search_result.csv`.
 
 Each artifact receives a SHA-256 digest and byte count. The adapter writes `run-result.json` conforming to `run-result.schema.json`. The manifest records:
-- mission ID/version, submission UUID and action-envelope hash;
+- mission ID/version, exact Mission Inception SHA-256, submission UUID and action-envelope hash;
 - dataset ID/revision and calculated raw CSV SHA-256;
 - split method and split seed;
 - GLAM Git commit when available;
