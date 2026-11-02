@@ -1,4 +1,6 @@
 import pathlib
+import ast
+import os
 import pandas as pd
 from metrics import auto_metrics
 
@@ -20,8 +22,13 @@ def print_ongoing_info(logs_dir: pathlib.PosixPath):
                     break
 
 
+def _dataset_logs_dir(dataset: str) -> pathlib.Path:
+    root = pathlib.Path(os.environ.get('GLAM_OUTPUT_ROOT', pathlib.Path.cwd())).expanduser().resolve()
+    return root / f'log_{dataset}'
+
+
 def auto_summarize_logs(dataset: str, ongoing=False):
-    logs_dir = pathlib.Path('./log_{}/'.format(dataset))
+    logs_dir = _dataset_logs_dir(dataset)
     if not logs_dir.exists():
         return None
     print('\n\n', '#' * 30, dataset, '#' * 30)
@@ -54,7 +61,7 @@ def read_logs(logs_dir: pathlib.PosixPath):
         with open(log_path) as f:
             # read a single logfile to lines, and skip the log files without test
             lines = f.readlines()
-            if not lines[-1].startswith('{') :
+            if len(lines) < 2 or not lines[-1].startswith('{'):
                 continue
 
             # read a sigle logfile to config from -2 line, and short the words for better visual experience
@@ -64,12 +71,12 @@ def read_logs(logs_dir: pathlib.PosixPath):
                 .replace('_GATConv', 'GAT').replace('hid_dim_alpha', 'a').replace('message_steps', 'step') \
                 .replace('Dropout(', '(').replace('Global', '').replace('_norm', 'n') \
                 .replace('_LayerNorm', 'LN').replace('_BatchNorm', 'BN').replace('_PairNorm', 'PN') \
-                .replace('more_epochs_run', 'mer').replace('_None', '0') \
+                .replace('_None', '0') \
                 .replace('LeakyReLU', 'LReLU')
-            config_for_print = eval(str_config_dict)
+            config_for_print = ast.literal_eval(str_config_dict)
             for item in ['dataset_root', 'seed', 'gpu', 'verbose_patience', 'out_dim',
                          'early_stop_patience', 'lr_reduce_rate', 'lr_reduce_patience']:
-                del config_for_print[item]
+                config_for_print.pop(item, None)
 
             # read a single logfile to loss, test information, valid information.
             loss_info, test_info, valid_info = lines[-1].replace(
@@ -77,9 +84,9 @@ def read_logs(logs_dir: pathlib.PosixPath):
             # print(p, loss_info, test_info)  # for some inf set
             log = {'id': p.name}
             if 'inf' in loss_info or 'inf' in test_info or 'inf' in valid_info: continue
-            log.update(eval(loss_info))
-            log.update(eval(test_info))
-            log.update(eval(valid_info))
+            log.update(ast.literal_eval(loss_info))
+            log.update(ast.literal_eval(test_info))
+            log.update(ast.literal_eval(valid_info))
             log.update(config_for_print)
             log.update({'config': lines[-2]})
             logs.append(log)
@@ -98,7 +105,7 @@ def summarize_logs(logs_dir: pathlib.PosixPath, metrics: list):
             for m in metrics:
                 array = df[m].astype(float)
                 for opt in ['mean', 'min', 'max', 'std']:
-                    d[opt + m] = eval('array.{}()'.format(opt))
+                    d[opt + m] = getattr(array, opt)()
             d.update({})
             logs_summary.append(d)
         logs_summary = pd.DataFrame(logs_summary).sort_values(
