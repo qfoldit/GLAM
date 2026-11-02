@@ -7,6 +7,7 @@ import numpy as np
 import random
 from itertools import compress
 from collections import defaultdict
+from pathlib import Path
 try:
     from rdkit.Chem.Scaffolds import MurckoScaffold
 except:
@@ -19,12 +20,24 @@ class Option(object):
         self.__dict__ = d
 
 
+def run_output_root():
+    """Return the run output root configured for this isolated GLAM job."""
+    configured = os.environ.get("QFOLDIT_GLAM_RUN_ROOT")
+    return Path(configured).expanduser().resolve() if configured else Path(__file__).resolve().parent
+
+
+def dataset_run_dir(dataset):
+    """Return the dataset-specific run directory without changing legacy defaults."""
+    return run_output_root() / ("log_" + str(dataset))
+
+
 def seed_torch(seed=1029):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
 
@@ -157,10 +170,11 @@ def random_scaffold_split(dataset, smiles_list, task_idx=None, null_value=0,
         scaffold = generate_scaffold(smiles, include_chirality=True)
         scaffolds[scaffold].append(ind)
 
-    # rng = np.random.RandomState(seed)
-    # scaffold_sets = rng.permutation(list(scaffolds.values()))  new version of numpy will raise error
     scaffold_sets = list(scaffolds.values())
-    np.random.shuffle(scaffold_sets)
+    rng = np.random.default_rng(seed)
+    if scaffold_sets:
+        order = rng.permutation(len(scaffold_sets))
+        scaffold_sets = [scaffold_sets[int(index)] for index in order]
 
     n_total_valid = int(np.floor(frac_valid * len(dataset)))
     n_total_test = int(np.floor(frac_test * len(dataset)))
