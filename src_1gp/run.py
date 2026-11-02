@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset_root', default='../../Dataset/GLAM-GP', type=str, help='dataset root path')
 parser.add_argument('--dataset', type=str, default='esol', help='bbbp, bace, sider')
-parser.add_argument('--split', type=str, default='random', help='random, scaffold')
+parser.add_argument('--split', choices=['scaffold', 'random'], default='scaffold', help='dataset split strategy')
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument('--split_seed', type=int, default=1234)
 parser.add_argument('--gpu', default=0, type=int, help='cuda device id')
