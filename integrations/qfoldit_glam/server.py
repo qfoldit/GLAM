@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import importlib.metadata
+import importlib.util
 import json
 import os
 import re
@@ -362,11 +363,11 @@ def _terminate_process_tree(process: subprocess.Popen[Any]) -> None:
         return
     if os.name == "posix":
         try:
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            os.killpg(process.pid, signal.SIGTERM)
             process.wait(timeout=10)
         except (ProcessLookupError, subprocess.TimeoutExpired):
             try:
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
     else:
