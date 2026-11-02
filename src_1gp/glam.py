@@ -1,9 +1,10 @@
 import argparse
-from pathlib import Path
-import time
+import random
 import subprocess
-from random import choice
-from utils import GPUManager, md5
+import time
+from pathlib import Path
+from reproducibility import make_search_rng, stable_config_id
+from utils import GPUManager, dataset_run_dir
 from logger import config2cmd
 from trainer import GLAMHelper
 from dataset import Dataset, PertubationDataset, dataset_names
@@ -16,7 +17,8 @@ class GLAM():
         self.gm = GPUManager()
         self.seeds = [12, 123, 1234, 16, 32, 50, 64, 100, 128, 200]
         self.start = time.time()
-        self.logs_dir = Path('./log_{}/'.format(args.dataset))
+        self.rng = make_search_rng(getattr(args, 'search_seed', args.seed))
+        self.logs_dir = dataset_run_dir(args.dataset)
         Path.mkdir(self.logs_dir, exist_ok=True)
         self.glam_helper = GLAMHelper(args.dataset, args.n_top_blend)
         self.searched_params = []
@@ -27,6 +29,8 @@ class GLAM():
         self.log('{} gpus available'.format(len(self.gm.gpus)))
 
     def low_fidelity_training(self):
+        if self.args.n_low_fidelity_seed > len(self.seeds):
+            raise ValueError('n_low_fidelity_seed exceeds the available deterministic seed list')
         proc = []
         for i in range(self.args.n_init_configs):
             # # take a point out of the search space
@@ -47,15 +51,22 @@ class GLAM():
                 proc.append(p)
                 time.sleep(5)
             print(config_id, i)
-        for p in proc:
-            p.wait()  # wait for all proc down
+        failures = []
+        for process in proc:
+            exit_code = process.wait()
+            if exit_code != 0:
+                failures.append((process.pid, exit_code))
+        if failures:
+            raise RuntimeError('GLAM low-fidelity worker failures: {}'.format(failures))
         self.log('Search complete !', with_time=True)
 
     def sample_config(self):
+        choice = self.rng.choice
         config = {
             'dataset': self.args.dataset,
             'dataset_root': self.args.dataset_root,
             'seed': self.args.seed,
+            'split': self.args.split,
             'split_seed': self.args.split_seed,
             'hid_dim_alpha': choice([1, 2, 3, 4, 6]),
             'e_dim': choice([256, 512, 1024, 2048]),  # Excitation
@@ -95,8 +106,7 @@ class GLAM():
             config['loss'] = choice(['bcel'])
         elif self.args.dataset in dataset_names["r"] + ['physprop_perturb']:
             config['loss'] = choice(['mse', 'mse', 'mse', 'mae', 'huber'])
-        config_id = md5(' '.join([k + ' ' + str(v)
-                        for k, v in config.items()]))
+        config_id = stable_config_id(config)
         return config, config_id
 
     def auto_blend(self):
@@ -138,7 +148,13 @@ if __name__ == '__main__':
                         help='seed to init a model')
     parser.add_argument('--split_seed', default=1234,
                         type=int, help='seed to split a dataset')
+    parser.add_argument('--split', default='scaffold', choices=['scaffold', 'random'],
+                        help='dataset split protocol')
+    parser.add_argument('--search_seed', default=None, type=int,
+                        help='seed controlling architecture/configuration search')
     args = parser.parse_args()
+    if args.search_seed is None:
+        args.search_seed = args.seed
     # args.dataset, args.n_init_configs, args.n_low_fidelity_seed, args.n_top_blend, args.n_high_fidelity_seed = 'physprop_perturb', 1, 1, 1, 1
     solver = GLAM(args)
     solver.low_fidelity_training()
