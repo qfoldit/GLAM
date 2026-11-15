@@ -11,10 +11,12 @@ Access the paper by this sharedit link: https://rdcu.be/cQP0g
 
 This repository is the qFoldIT-managed fork of Yuquan Li's GLAM research implementation. The scientific method and original publication remain attributed to the original authors; the qFoldIT adapter is a separately scoped integration layer and does not claim ownership of upstream research.
 
-The qFoldIT adapter exposes only the existing adaptive molecular-property training/model-selection workflow. Its versioned contracts are:
-- `qfoldit.glam-adapter.job-request/0.2`;
-- `qfoldit.glam-adapter.job-response/0.2`;
-- `qfoldit.glam.run-result/1.0`.
+The qFoldIT adapter exposes only the existing adaptive molecular-property training/model-selection workflow. Its current versioned contracts are:
+- `qfoldit.glam-adapter.job-request/0.3`;
+- `qfoldit.glam-adapter.job-response/0.3`;
+- `qfoldit.glam.run-result/1.1`.
+
+These adapter contracts are not the same thing as the provider-neutral QSIS Capability Manifest / Job Request / Job Result. The GLAM MCP wrapper remains experimental and loopback-only; per-operation QSIS qualification and the common FIC 1.0 / QSIS Core 1.0 conformance path are still required. See [QSIS Core 1.0](https://github.com/qfoldit/UAG-SOS/blob/main/STANDARDS/QSIS/QSIS-CORE-AND-PROVIDER-COMPATIBILITY-1.0.md) and the [Foldnite block matrix](https://github.com/qfoldit/UAG-SOS/blob/main/STANDARDS/FOLDNITE/FOLDNITE-BLOCK-INTEROPERABILITY-1.0.md).
 
 The adapter requires mission/submission provenance, binds the raw dataset CSV by SHA-256, records an explicit scaffold/random split and isolates every job's outputs. It verifies high-fidelity/model-selection artifacts before publishing the run-result manifest. It does **not** expose direct per-molecule inference, production DTI/DDI screening, independent scientific acceptance or Evidence 1.1 publication.
 
