@@ -1,5 +1,7 @@
 # qFoldIT GLAM Adapter
 
+**Platform standard:** this adapter is governed by [QSIS Core 1.0](https://github.com/qfoldit/UAG-SOS/blob/main/STANDARDS/QSIS/QSIS-CORE-AND-PROVIDER-COMPATIBILITY-1.0.md) and [Foldnite FIC 1.0](https://github.com/qfoldit/UAG-SOS/blob/main/STANDARDS/FOLDNITE/FOLDNITE-BLOCK-INTEROPERABILITY-1.0.md). Current adapter contract versions below are implementation-specific; they do not imply that the GLAM MCP endpoint has passed QSIS P0–P7 qualification.
+
 **Adapter:** `qfoldit.glam`  
 **Adapter version:** `0.3.0`  
 **Request:** `qfoldit.glam-adapter.job-request/0.3`  
@@ -7,7 +9,7 @@
 **Run result:** `qfoldit.glam.run-result/1.1`  
 **Authority:** molecular-property model training / model selection and run artifacts only
 
-This is a bounded service adapter around GLAM's existing adaptive molecular-property training and model-selection pipeline. It is not an independent scientific validator and cannot issue Evidence 1.1.
+This is a bounded service adapter around GLAM's existing adaptive molecular-property training and model-selection pipeline. It is not an independent scientific validator and cannot issue Evidence 1.2.
 
 ## qFoldIT architecture placement
 
@@ -32,7 +34,7 @@ Mission Contract + Scientific Action Envelope
                     v
        independent, task-appropriate validator
                     |
-       validation.completed/1.1 / Evidence 1.1
+       validation.completed/1.2 / Evidence 1.2 (separate trust plane)
 ```
 
 GLAM owns its computational run and artifacts. Mission semantics, authorization, queue admission, customer policy and Evidence authority remain outside GLAM. UEFN/Verse is not a GLAM client and must never receive GLAM credentials, dataset paths, or worker commands.
@@ -172,7 +174,7 @@ Do not mark this adapter production-ready until all of the following have separa
 5. Model artifacts can be retrieved from durable controlled storage and reproduced by an independent operator.
 6. Remote workload identity, tenant isolation, durable job queue/recovery, cancellation, monitoring and retention have passed operational review.
 7. An independent validator appropriate to the mission has evaluated the submitted prediction artifacts.
-8. The Evidence 1.1 conformance path has consumed the validator's signed result.
+8. The Evidence 1.2 trust-plane conformance path has consumed the independent validator's signed attestation.
 
 ## Scientific and licensing boundary
 
