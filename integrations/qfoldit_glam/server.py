@@ -3,7 +3,7 @@
 
 The adapter exposes only a bounded training/model-selection task. It records
 process completion and reproducible run artifacts, but never self-issues
-scientific acceptance or Evidence 1.1.
+scientific acceptance or Evidence 1.2.
 """
 from __future__ import annotations
 
@@ -603,7 +603,7 @@ class Handler(BaseHTTPRequestHandler):
                     "drug-target interaction run orchestration",
                     "drug-drug interaction run orchestration",
                     "independent scientific acceptance",
-                    "Evidence 1.1 publication",
+                    "Evidence 1.2 publication",
                 ],
             })
             return
