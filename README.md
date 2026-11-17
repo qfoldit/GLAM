@@ -18,13 +18,13 @@ The qFoldIT adapter exposes only the existing adaptive molecular-property traini
 
 These adapter contracts are not the same thing as the provider-neutral QSIS Capability Manifest / Job Request / Job Result. The GLAM MCP wrapper remains experimental and loopback-only; per-operation QSIS qualification and the common FIC 1.0 / QSIS Core 1.0 conformance path are still required. See [QSIS Core 1.0](https://github.com/qfoldit/UAG-SOS/blob/main/STANDARDS/QSIS/QSIS-CORE-AND-PROVIDER-COMPATIBILITY-1.0.md) and the [Foldnite block matrix](https://github.com/qfoldit/UAG-SOS/blob/main/STANDARDS/FOLDNITE/FOLDNITE-BLOCK-INTEROPERABILITY-1.0.md).
 
-The adapter requires mission/submission provenance, binds the raw dataset CSV by SHA-256, records an explicit scaffold/random split and isolates every job's outputs. It verifies high-fidelity/model-selection artifacts before publishing the run-result manifest. It does **not** expose direct per-molecule inference, production DTI/DDI screening, independent scientific acceptance or Evidence 1.1 publication.
+The adapter requires mission/submission provenance, binds the raw dataset CSV by SHA-256, records an explicit scaffold/random split and isolates every job's outputs. It verifies high-fidelity/model-selection artifacts before publishing the run-result manifest. It does **not** expose direct per-molecule inference, production DTI/DDI screening, independent scientific acceptance or Evidence 1.2 publication.
 
 - [qFoldIT GLAM adapter and production gates](integrations/qfoldit_glam/README.md)
 - [Job request schema](integrations/qfoldit_glam/mission-request.schema.json)
 - [Job response schema](integrations/qfoldit_glam/job-response.schema.json)
 - [Run-result manifest schema](integrations/qfoldit_glam/run-result.schema.json)
-- [qFoldIT GLAM Scientific MCP server](https://github.com/qfoldit/UEFN-QFOLDIT/tree/main/runtime/glam-mcp) — experimental protocol wrapper; it must be updated to the 0.2 adapter contract before being used with this branch.
+- [qFoldIT GLAM Scientific MCP server](https://github.com/qfoldit/UEFN-QFOLDIT/tree/main/runtime/glam-mcp) — experimental protocol wrapper; it uses the 0.3 adapter contract and remains loopback-only until a reviewed remote gateway and QSIS qualification are complete.
 
 A successful process exit is not scientific validation. The GLAM run-result is a provenance-bearing computation artifact; an approved, independent validator must assess the relevant scientific claim before Evidence, attribution or commercial settlement can be accepted.
 
